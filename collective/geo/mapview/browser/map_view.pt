@@ -1,0 +1,205 @@
+<html xml:lang="en" lang="en"
+ xmlns="http://www.w3.org/1999/xhtml"
+ xmlns:tal="http://xml.zope.org/namespaces/tal"
+ xmlns:metal="http://xml.zope.org/namespaces/metal"
+ xmlns:i18n="http://xml.zope.org/namespaces/i18n"
+ metal:use-macro="context/main_template/macros/master"
+ i18n:domain="collective.geo.mapview">
+
+<head>
+  
+<metal:styleslot fill-slot="style_slot">
+<link type="text/css" rel="stylesheet"
+ href="++resource++collective.geo.mapview.css/jquery-ui-themeroller.css" 
+ tal:attributes="href string:${context/portal_url}/${attrs/href}" />
+<link type="text/css" rel="stylesheet"
+ href="++resource++collective.geo.mapview.css/openlayers.css" 
+ tal:attributes="href string:${context/portal_url}/${attrs/href}" />
+<link type="text/css" rel="stylesheet"
+ href="++resource++collective.geo.mapview.css/ushahidi.css" 
+ tal:attributes="href string:${context/portal_url}/${attrs/href}" />
+</metal:styleslot>
+
+<metal:javascriptslot fill-slot="javascript_head_slot">
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/jquery.ui.min.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/OpenLayers.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/ushahidi.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/jquery.pngFix.pack.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/jquery.timeago.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="https://maps.google.com/maps/api/js?v=3.7&amp;sensor=false">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/OpenStreetMap.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/selectToUISlider.jQuery.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/jquery.jqplot.min.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/jqplot.dateAxisRenderer.min.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="ushahidi-map-settings.js"
+ tal:attributes="src string:${context/absolute_url}/${attrs/src}">
+</script>
+<script type="text/javascript"
+ src="++resource++collective.geo.mapview.js/ushahidi_map.js"
+ tal:attributes="src string:${context/portal_url}/${attrs/src}">
+</script>
+</metal:javascriptslot>
+  
+</head>
+
+<body>
+
+<metal:content-core fill-slot="content-core">
+<metal:content-core define-macro="content-core">
+
+<div class="floatbox withright" id="map_mainmiddle">
+
+  <!-- right column -->
+  <div class="clearingfix" id="map_right">
+
+    <!-- category filters -->
+    <div class="cat-filters clearingfix">
+      <strong>Category Filter</strong>
+    </div>
+    <ul class="category-filters" id="category_switch">
+      <li>
+        <a href="#" id="cat_" class="active">
+          <span class="swatch" style="background-color:#CC0000"><!-- --></span>
+          <span class="category-title">All Categories</span>
+        </a>
+      </li>
+      <tal:cats repeat="cat view/getCategories">
+      <li>
+        <a title="Category 1" id="cat_" href="#"
+         tal:attributes="title cat/label;
+                         id string:${attrs/id}${cat/label}">
+          <span class="swatch" style="background-color:%s"
+           tal:attributes="style python:attrs['style'] % cat['color']"><!-- --></span>
+          <span class="category-title"
+           tal:content="cat/label">Category 1</span>
+        </a>
+      </li>
+      </tal:cats>
+    </ul>
+    <!-- / category filters -->
+
+  </div>
+  <!-- / right column -->
+
+  <!-- content column -->
+  <div class="clearingfix" id="map_content">
+    <div class="floatbox">
+
+      <!-- filters -->
+<!--
+      <div class="filters clearingfix">
+        <div style="float:left; width: 100%">
+          <strong>Filters</strong>
+          <ul>
+            <li>
+              <a href="#" class="active" id="media_"><span>All</span></a>
+            </li>
+            <li tal:repeat="ctype view/getTypes">
+              <a href="#" id="media_"
+                 tal:attributes="id string:${attrs/id}${ctype/id}">
+                <span tal:content="ctype/title">News</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+-->
+      <!-- / filters -->
+
+      <!-- map -->
+      <div id="map" class="map"></div>
+
+      <div style="clear: both;"></div>
+
+      <div id="mapStatus">
+        <div id="mapScale" style="border-right: solid 1px #999"></div>
+        <div id="mapMousePosition"
+         style="min-width: 135px; border-right: solid 1px #999; text-align: center"></div>
+        <div style="border-right: solid 1px #999" id="mapProjection"></div>
+        <div id="mapOutput"></div>
+      </div>
+
+      <div style="clear: both;"></div>
+
+      <!-- / map -->
+      
+      <div class="slider-holder">
+        <form method="get" action="."
+         tal:attributes="action string:${context/absolute_url}/${view/__name__}">
+          <input type="hidden" id="currentCat" name="currentCat" value="0">
+          <fieldset tal:define="years view/getDates">
+            <label for="startDate">From:</label>
+            <select id="startDate" name="startDate">
+              <tal:years repeat="year years">
+              <optgroup label="2012"
+               tal:define="months python:year[1]"
+               tal:attributes="label python:year[0]">
+                <tal:months repeat="month months">
+                <option value="1333238400"
+                 tal:attributes="value month/timestamp"
+                 tal:content="month/label">Apr 2012</option>
+                </tal:months>
+              </optgroup>
+              </tal:years>
+            </select>
+            <label for="endDate">to:</label>
+            <select id="endDate" name="endDate">
+              <tal:years repeat="year years">
+              <optgroup label="2012"
+               tal:define="months python:year[1]"
+               tal:attributes="label python:year[0]">
+                <tal:months repeat="month months">
+                <option value="1333238400"
+                 tal:content="month/label"
+                 tal:attributes="selected python:repeat['month'].last and 'selected' or None;
+                                 value month/timestamp">Apr 2012</option>
+                </tal:months>
+              </optgroup>
+              </tal:years>
+            </select>
+          </fieldset>
+        </form>
+      </div>
+
+      <div class="graph-holder" id="graph"></div>
+    </div>
+  </div>
+  <!-- / content column -->
+
+  </div>
+
+</metal:content-core>
+</metal:content-core>
+
+</body>
+</html>

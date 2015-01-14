@@ -1,0 +1,59 @@
+<configure
+  xmlns="http://namespaces.zope.org/zope"
+  xmlns:browser="http://namespaces.zope.org/browser"
+  i18n_domain="collective.geo.mapview">
+
+  <browser:page
+    for="*"
+    name="ushahidi-map-view"
+    class=".map_view.UshahidiMapView"
+    template="map_view.pt"
+    permission="zope.Public" />
+
+  <browser:page
+    for="*"
+    name="ushahidi-json-cluster"
+    class=".map_view.UshahidiMapView"
+    attribute="getJSONCluster"
+    permission="zope.Public" />
+
+  <browser:page
+    for="*"
+    name="ushahidi-json"
+    class=".map_view.UshahidiMapView"
+    attribute="getJSON"
+    permission="zope.Public" />
+
+  <browser:page
+    for="*"
+    name="ushahidi-json-layer"
+    class=".map_view.UshahidiMapView"
+    attribute="getJSONLayer"
+    permission="zope.Public" />
+
+  <browser:page
+    for="*"
+    name="ushahidi-timeline"
+    class=".map_view.UshahidiMapView"
+    attribute="getTimeline"
+    permission="zope.Public" />
+
+  <browser:page
+    for="*"
+    name="ushahidi-map-settings.js"
+    class=".map_settings_js.JSVariables"
+    permission="zope.Public" />
+
+  <browser:resourceDirectory
+    name="collective.geo.mapview.img"
+    directory="img" />
+
+  <browser:resourceDirectory
+    name="collective.geo.mapview.js"
+    directory="js" />
+
+  <browser:resourceDirectory
+    name="collective.geo.mapview.css"
+    directory="css" />
+
+</configure>

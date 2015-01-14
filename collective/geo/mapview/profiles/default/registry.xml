@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<registry>
+  <record name="collective.geo.mapview.keywords_colors">
+    <field type="plone.registry.field.Dict">
+      <title>Map Keywords Colors</title>
+      <key_type type="plone.registry.field.ASCIILine" />
+      <value_type type="plone.registry.field.ASCIILine" />
+    </field>
+    <value>
+      <element key="tag1">9900CC</element>
+      <element key="tag2">3300FF</element>
+      <element key="tag3">663300</element>
+      <element key="tag4">339900</element>
+      <element key="tag5">AAAAAA</element>
+    </value>
+  </record>
+</registry>
