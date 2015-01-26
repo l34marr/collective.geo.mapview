@@ -46,10 +46,10 @@ class JSVariables(BrowserView):
             endTime='0',
             enableTimeline='true',
             allowClustering='true',
-            defaultZoom='7',
+            defaultZoom='4',
             # TODO: make map auto-center
-            defaultLatitude='23.69781',
-            defaultLongitude='120.96051499999999',
+            defaultLatitude='37.69781',
+            defaultLongitude='105.96051499999999',
             mainLayerName=context.Title(),
             defaultMap='osm_mapnik',
             imagesLocation='%s/++resource++collective.geo.mapview.img/' % purl,
