@@ -5,7 +5,7 @@
 
   <browser:page
     for="*"
-    name="ushahidi-map-view"
+    name="map-view"
     class=".map_view.UshahidiMapView"
     template="map_view.pt"
     permission="zope.Public" />

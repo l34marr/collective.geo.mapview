@@ -2,8 +2,9 @@
 
 import json
 import calendar
-from datetime import datetime
+from datetime import datetime, timedelta
 from DateTime import DateTime
+from DateTime.interfaces import TimeError
 
 from Acquisition import aq_inner
 
@@ -130,11 +131,16 @@ class UshahidiMapView(BrowserView):
                         if year == last_year:
                             month_to = last_month
 
+                        month_name = {1: 'Jan', 2: 'Feb', 3: 'Mar',
+                                  4: 'Apr', 5: 'May', 6: 'Jun',
+                                  7: 'Jul', 8: 'Aug', 9: 'Sep',
+                                 10: 'Oct', 11: 'Nov', 12: 'Dec'}
+
                         for month in range(month_from, month_to+1):
                             dt = datetime(year, month, 1)
                             months.append({
                                 'datetime': dt,
-                                'label': '%s %s' % (dt.strftime('%b'), year),
+                                'label': '%s %s' % (month_name[dt.month], year),
                                 'timestamp': calendar.timegm(dt.timetuple()),
                             })
 
@@ -191,12 +197,12 @@ class UshahidiMapView(BrowserView):
 
         # apply 'from' date
         start = self.request.get('s')
-        if start and start != '0':
+        if start and start != '0' and start != 'null':
             query &= Ge('end', int(start))
 
         # apply 'to' date
         end = self.request.get('e')
-        if end and end != '0':
+        if end and end != '0' and end != 'null':
             query &= Le('start', int(end))
 
         return query
@@ -372,8 +378,42 @@ class UshahidiMapView(BrowserView):
 
         # prepare data from request
         interval = self.request.get('i', '') or 'month'
-        start = DateTime(int(self.request['s']))
-        end = DateTime(int(self.request['e']))
+
+        try:
+            st_delta = int(self.request['s'])
+            if st_delta < 0:
+                start = DateTime(datetime(1970, 01, 01) - timedelta(seconds=abs(st_delta)))
+            else:
+                start = DateTime(st_delta)
+        except:
+            start = DateTime('1840/01/01 00:00:00 UTC')
+
+        try:
+            end_delta = int(self.request['e'])
+            if end_delta < 0:
+                end = DateTime(datetime(1970, 01, 01) - timedelta(seconds=abs(end_delta)))
+            else:
+                end = DateTime(end_delta)
+        except:
+            end = DateTime('1960/12/31 00:00:00 UTC')
+
+        # 'year' interval
+        if interval == 'year':
+            years = {}
+            for year in self._getYearsRange(start, end):
+                _from = DateTime(year, 1, 1).earliestTime()
+                _to = DateTime(year, 12, 31).latestTime()
+                _date = calendar.timegm(datetime(year, 1, 1).timetuple()
+                    ) * 1000
+                years.setdefault(_date, 0)
+                for marker in markers:
+                    if self._isObjWithinPeriod(marker, _from, _to):
+                        years[_date] += 1
+
+            # sort and filter out 'zero' months
+            keys = years.keys()
+            keys.sort()
+            data = [[key, years[key]] for key in keys]
 
         # 'month' interval
         if interval == 'month':
@@ -537,6 +577,18 @@ class UshahidiMapView(BrowserView):
                     calendar.monthrange(year, month)[1]))
 
         return months
+
+    def _getYearsRange(self, start, end):
+        """Returns list of (year) tuples for passed
+        start and end DateTimes.
+        """
+        first_year, last_year = start.year(), end.year()
+
+        years = []
+        for year in range(first_year, last_year+1):
+            years.append(year)
+
+        return years
 
     def getJSONLayer(self):
         return json.dumps({})

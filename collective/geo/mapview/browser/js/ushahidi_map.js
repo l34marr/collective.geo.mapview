@@ -48,6 +48,8 @@ function refreshTimeline(options) {
 
   var interval = (end - start) / (3600 * 24);
 
+  $(".ui-slider-scale dt").show();
+
   var dateFormat = '%#d&nbsp;%b<br />%Y';
   if (interval <= 3) {
     // TODO: not implemented on server side
@@ -58,9 +60,14 @@ function refreshTimeline(options) {
   } else if (interval <= (31 * 6)) {
     options.i = "week";
     dateFormat = '&nbsp;%#d<br />%b';
-  } else {
+  } else if (interval <= (30 * 12 *5)) {
     options.i = "month";
-  }
+  } else {
+    options.i = "year";
+    dateFormat = '%Y';
+    //$(".ui-slider-label-show").hide();
+    $(".ui-slider-scale dt").hide();
+  };
 
   // Get the graph data
   $.ajax({
@@ -158,6 +165,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.SATELLITE,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 
@@ -165,6 +173,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.HYBRID,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 
@@ -178,6 +187,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.TERRAIN,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 
@@ -224,7 +234,7 @@ jQuery(function() {
 
     // Base layers
     // TODO: make it configurable
-    baseLayers: [china_1903, harbin_1907,
+    baseLayers: [harbin_1907, china_1903,
       google_normal, google_satellite, google_hybrid, google_physical],
 
     // Display the map projection
@@ -314,15 +324,15 @@ jQuery(function() {
     
   // Timeslider and date change actions
   if ($('select#startDate option').length > 0 &&
-      $('select#endDate option').length > 0) {
+     $('select#endDate option').length > 0) {
     $("select#startDate, select#endDate").selectToUISlider({
-      labels: 4,
+      labels: 3,
       labelSrc: 'text',
       sliderOptions: {
         change: function(e, ui) {
-          var from = $("#startDate").val();
-          var to = $("#endDate").val();
-
+          var from = parseInt($("#startDate").val());
+          var to = parseInt($("#endDate").val());
+ 
           if (to > from && (from != startTime || to != endTime)) {
             // Update the report filters
             startTime = from;
