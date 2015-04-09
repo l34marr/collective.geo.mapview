@@ -130,11 +130,15 @@ class UshahidiMapView(BrowserView):
                         if year == last_year:
                             month_to = last_month
 
+                        month_name = {1: 'Jan', 2: 'Feb', 3: 'Mar',
+                                      4: 'Apr', 5: 'May', 6: 'Jun',
+                                      7: 'Jul', 8: 'Aug', 9: 'Sep',
+                                     10: 'Oct', 11: 'Nov', 12: 'Dec'}
                         for month in range(month_from, month_to+1):
                             dt = datetime(year, month, 1)
                             months.append({
                                 'datetime': dt,
-                                'label': '%s %s' % (dt.strftime('%b'), year),
+                                'label': '%s %s' % (month_name[dt.month], year),
                                 'timestamp': calendar.timegm(dt.timetuple()),
                             })
 
@@ -372,7 +376,12 @@ class UshahidiMapView(BrowserView):
 
         # prepare data from request
         interval = self.request.get('i', '') or 'month'
-        start = DateTime(int(self.request['s']))
+        from DateTime.interfaces import TimeError
+        try:
+            start = DateTime(int(self.request['s']))
+        except TimeError:
+            start = DateTime('1854/01/10 09:00:00 UTC')
+
         end = DateTime(int(self.request['e']))
 
         # 'month' interval
