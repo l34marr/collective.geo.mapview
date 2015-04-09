@@ -117,6 +117,22 @@ function refreshTimeline(options) {
 }
 
 
+function get_cn_1903 (bounds) {
+  var res = this.map.getResolution();
+  var x = Math.round ((bounds.left - this.maxExtent.left) / (res * this.tileSize.w));
+  var y = Math.round ((this.maxExtent.top - bounds.top) / (res * this.tileSize.h));
+  var z = this.map.getZoom();
+  var limit = Math.pow(2, z);
+
+  if (y < 0 || y >= limit) {
+    return OpenLayers.Util.getImagesLocation() + "404.png";
+  } else {
+    x = ((x % limit) + limit) % limit;
+    return this.url + "file-exists.php?img=China_Map_1903-png-" + z + "-" + x + "-" + y;
+  }
+}
+
+
 jQuery(function() {
   var reportsURL = ushahidi_allowClustering ? "@@ushahidi-json-cluster" : "@@ushahidi-json";
 
@@ -149,7 +165,13 @@ jQuery(function() {
     sphericalMercator: true,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
-  
+
+  var china_1903 = new OpenLayers.Layer.TMS("China 1903", "http://gis.sinica.edu.tw/ccts/", {
+    type: 'png',
+    getURL: get_cn_1903,
+    displayOutsideMaxExtent: true,
+    transitionEffect: 'resize',});
+
   // Map configuration
   var config = {
 
@@ -181,8 +203,8 @@ jQuery(function() {
 
     // Base layers
     // TODO: make it configurable
-    baseLayers: [google_normal, google_satellite, google_hybrid,
-      google_physical],
+    baseLayers: [china_1903,
+      google_normal, google_satellite, google_hybrid, google_physical],
 
     // Display the map projection
     showProjection: true,
