@@ -158,6 +158,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.SATELLITE,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 
@@ -165,6 +166,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.HYBRID,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 
@@ -178,6 +180,7 @@ jQuery(function() {
     type: google.maps.MapTypeId.TERRAIN,
     animationEnabled: true,
     sphericalMercator: true,
+    visibility: false,
     maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 20037508.34,
       20037508.34)});
 

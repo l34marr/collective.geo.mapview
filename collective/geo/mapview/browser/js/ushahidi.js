@@ -372,6 +372,7 @@
 			numZoomLevels: 18,
 			theme: false,
 			controls: [],
+			allOverlays: true,
 			projection: Ushahidi.proj_900913,
 			'displayProjection': Ushahidi.proj_4326,
 			maxExtent: new OpenLayers.Bounds(-20037508.34, -20037508.34, 
