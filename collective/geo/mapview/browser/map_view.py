@@ -23,6 +23,10 @@ from plone.registry.interfaces import IRegistry
 from .interfaces import IUshahidiMapView
 from .map_settings_js import DEFAULT_MARKER_COLOR
 
+from plone.memoize import ram
+from time import time
+
+CACHE_MIN = 60
 
 class UshahidiMapView(BrowserView):
 
@@ -357,9 +361,8 @@ class UshahidiMapView(BrowserView):
     def getJSON(self):
         return json.dumps({})
 
-    def getTimeline(self):
-        data = []
-
+    @ram.cache(lambda *args: time() // (60 * CACHE_MIN))
+    def getTimelineMarkers(self):
         markers = []
         query = self._prepare_query()
         catalog = getToolByName(self.context, 'portal_catalog')
@@ -375,7 +378,11 @@ class UshahidiMapView(BrowserView):
                 continue
 
             markers.append(brain)
+        return markers
 
+    def getTimeline(self):
+        data = []
+        markers = self.getTimelineMarkers()
         # prepare data from request
         interval = self.request.get('i', '') or 'month'
 
