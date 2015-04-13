@@ -15,4 +15,4 @@ References
 
 * ``Ushahidi``: http://www.ushahidi.com/
 * ``collective.geo.ushahidi``: http://github.com/softformance/collective.geo.ushahidi
-
+* ``Progress Map``: http://codecanyon.net/item/progress-map-wordpress-plugin/5581719
