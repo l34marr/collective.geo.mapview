@@ -46,29 +46,11 @@ function refreshTimeline(options) {
     options.e = end;
   }
 
-  var interval = (end - start) / (3600 * 24);
+  $(".ui-slider-scale dt").hide();
 
-  $(".ui-slider-scale dt").show();
-
-  var dateFormat = '%#d&nbsp;%b<br />%Y';
-  if (interval <= 3) {
-    // TODO: not implemented on server side
-    options.i = "hour";
-  } else if (interval <= (31 * 2)) {
-    options.i = "day";
-    dateFormat = '&nbsp;%#d<br />%b';
-  } else if (interval <= (31 * 6)) {
-    options.i = "week";
-    dateFormat = '&nbsp;%#d<br />%b';
-  } else if (interval <= (30 * 12 *5)) {
-    options.i = "month";
-  } else {
-    options.i = "year";
-    dateFormat = '%Y';
-    //$(".ui-slider-label-show").hide();
-    $(".ui-slider-scale dt").hide();
-  };
-
+  //graph diversion in years
+  diversion = 1
+  
   // Get the graph data
   $.ajax({
     url: url,
@@ -80,17 +62,7 @@ function refreshTimeline(options) {
       if (response != null && response[0].data.length < 2)
         return;
 
-      var graphData = [];
-      var raw = response[0].data;
-      for (var i=0; i<raw.length; i++) {
-        var date = new Date(raw[i][0]);
-
-        var dateStr = date.getFullYear() + "-";
-        dateStr += ('0' + (date.getMonth()+1)).slice(-2) + '-';
-        dateStr += ('0' + date.getDate()).slice(-2);
-
-        graphData.push([dateStr, parseInt(raw[i][1])]);
-      }
+      var graphData = response[0].data;
       var timeline = $.jqplot('graph', [graphData], {
         seriesDefaults: {
           color: response[0].color,
@@ -104,9 +76,10 @@ function refreshTimeline(options) {
         },
         axes: {
           xaxis: {
-            renderer: $.jqplot.DateAxisRenderer,
+            min: graphData[0][0]-diversion,
+            max: graphData[graphData.length-1][0]+diversion,
             tickOptions: {
-              formatString: dateFormat
+              formatString: '%.0f'
             }
           },
           yaxis: {
@@ -326,7 +299,7 @@ jQuery(function() {
   if ($('select#startDate option').length > 0 &&
      $('select#endDate option').length > 0) {
     $("select#startDate, select#endDate").selectToUISlider({
-      labels: 3,
+      labels: 5,
       labelSrc: 'text',
       sliderOptions: {
         change: function(e, ui) {

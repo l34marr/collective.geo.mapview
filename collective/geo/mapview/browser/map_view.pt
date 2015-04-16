@@ -21,10 +21,10 @@
 </metal:styleslot>
 
 <metal:javascriptslot fill-slot="javascript_head_slot">
-<script type="text/javascript"
+<!-- <script type="text/javascript"
  src="++resource++collective.geo.mapview.js/jquery.ui.min.js"
  tal:attributes="src string:${context/portal_url}/${attrs/src}">
-</script>
+</script> -->
 <script type="text/javascript"
  src="++resource++collective.geo.mapview.js/OpenLayers.js"
  tal:attributes="src string:${context/portal_url}/${attrs/src}">
@@ -161,30 +161,17 @@
             <label for="startDate">From:</label>
             <select id="startDate" name="startDate">
               <tal:years repeat="year years">
-              <optgroup label="2012"
-               tal:define="months python:year[1]"
-               tal:attributes="label python:year[0]">
-                <tal:months repeat="month months">
-                <option value="1333238400"
-                 tal:attributes="value month/timestamp"
-                 tal:content="month/label">Apr 2012</option>
-                </tal:months>
-              </optgroup>
-              </tal:years>
+                <option value="2012"
+                 tal:attributes="value year"
+                 tal:content="year">1860</option>
+                </tal:years>
             </select>
             <label for="endDate">to:</label>
             <select id="endDate" name="endDate">
               <tal:years repeat="year years">
-              <optgroup label="2012"
-               tal:define="months python:year[1]"
-               tal:attributes="label python:year[0]">
-                <tal:months repeat="month months">
-                <option value="1333238400"
-                 tal:content="month/label"
-                 tal:attributes="selected python:repeat['month'].last and 'selected' or None;
-                                 value month/timestamp">Apr 2012</option>
-                </tal:months>
-              </optgroup>
+              <option value="2012"
+                 tal:attributes="value year; selected python:repeat['year'].last and 'selected' or None;"
+                 tal:content="year">2015</option>
               </tal:years>
             </select>
           </fieldset>

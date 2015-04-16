@@ -2,9 +2,6 @@
 
 import json
 import calendar
-from datetime import datetime, timedelta
-from DateTime import DateTime
-from DateTime.interfaces import TimeError
 
 from Acquisition import aq_inner
 
@@ -14,9 +11,8 @@ from zope.component import getMultiAdapter, getUtility
 from Products.Five.browser import BrowserView
 from Products.CMFCore.utils import getToolByName
 from Products.ATContentTypes.utils import DT2dt
-from Products.AdvancedQuery import Eq, Ge, Le, In
+from Products.AdvancedQuery import Eq, In, Between
 
-from plone.uuid.interfaces import IUUID
 from plone.memoize.instance import memoize
 from plone.registry.interfaces import IRegistry
 
@@ -24,9 +20,11 @@ from .interfaces import IUshahidiMapView
 from .map_settings_js import DEFAULT_MARKER_COLOR
 
 from plone.memoize import ram
-from time import time
 
+START_YEAR = 1840
+END_YEAR = 1960
 CACHE_MIN = 60
+
 
 class UshahidiMapView(BrowserView):
 
@@ -34,7 +32,7 @@ class UshahidiMapView(BrowserView):
 
     def friendly_types(self):
         pstate = getMultiAdapter((self.context, self.request),
-            name=u'plone_portal_state')
+                                 name=u'plone_portal_state')
         return pstate.friendly_types()
 
     @memoize
@@ -43,17 +41,17 @@ class UshahidiMapView(BrowserView):
         catalog = getToolByName(context, 'portal_catalog')
         portal_types = getToolByName(context, 'portal_types')
 
-        categories = set() # to store unique object keywords
-        ctypes = [] # to store portal type and it's title
-        ctypes_added = [] # to avoid duplicates in content types list
-        ctypes_meta = {} # to cache portal type Titles
+        categories = set()  # to store unique object keywords
+        ctypes = []  # to store portal type and it's title
+        ctypes_added = []  # to avoid duplicates in content types list
+        ctypes_meta = {}  # to cache portal type Titles
 
         query = Eq('path', '/'.join(context.getPhysicalPath())) & \
             In('portal_type', self.friendly_types()) & \
             Eq('object_provides',
                 'collective.geo.geographer.interfaces.IGeoreferenceable')
 
-        brains = catalog.evalAdvancedQuery(query, (('start', 'asc'),))
+        brains = catalog.evalAdvancedQuery(query, (('yearHist', 'asc'),))
         for brain in brains:
             # skip if no coordinates set
             markers = self._get_markers(brain)
@@ -80,79 +78,40 @@ class UshahidiMapView(BrowserView):
         categories.sort()
 
         ctypes = list(ctypes)
-        ctypes.sort(lambda x,y:cmp(x['title'], y['title']))
+        ctypes.sort(lambda x, y: cmp(x['title'], y['title']))
 
-        # prepare dates, for this we just generate range of years and months
+        # prepare dates, for this we just generate range of years
         # between first and last item fetched list of objects
         dates = []
+        first_year = None
         if len(brains) > 0:
             # skip object w/o set start date
-            start_brain = None
             for brain in brains:
                 # skip if no coordinates set
                 markers = self._get_markers(brain)
                 if not markers:
                     continue
 
-                if brain.start and brain.start.year() > 1000:
-                    start_brain = brain
+                if brain.yearHist:
+                    first_year = brain.yearHist
                     break
 
-            if start_brain:
+            if first_year:
                 # now try to find last date, based on end field
-                end_brain = None
                 for brain in catalog.evalAdvancedQuery(query,
-                    (('end', 'desc'),)):
+                        (('yearHist', 'desc'),)):
                     # skip if no coordinates set
                     markers = self._get_markers(brain)
                     if not markers:
                         continue
 
-                    if brain.end and brain.end.year() < 2499:
-                        end_brain = brain
+                    if brain.yearHist:
+                        last_year = brain.yearHist
                         break
-
-                if not end_brain:
-                    end = brains[-1].start
-                else:
-                    end = end_brain.end
-
-                start = start_brain.start
-                first_year, last_year = start.year(), end.year()
-                first_month, last_month = start.month(), end.month()
 
                 if first_year and last_year:
                     for year in range(first_year, last_year+1):
-                        months = []
-
-                        # count from first month only for first year
-                        month_from = 1
-                        if year == first_year:
-                            month_from = first_month
-
-                        # count till last month only for last year
-                        month_to = 12
-                        if year == last_year:
-                            month_to = last_month
-
-                        month_name = {1: 'Jan', 2: 'Feb', 3: 'Mar',
-                                  4: 'Apr', 5: 'May', 6: 'Jun',
-                                  7: 'Jul', 8: 'Aug', 9: 'Sep',
-                                 10: 'Oct', 11: 'Nov', 12: 'Dec'}
-
-                        for month in range(month_from, month_to+1):
-                            dt = datetime(year, month, 1)
-                            months.append({
-                                'datetime': dt,
-                                'label': '%s %s' % (month_name[dt.month], year),
-                                'timestamp': calendar.timegm(dt.timetuple()),
-                            })
-
-                        dates.append((year, months))
-
-            # sort by year
-            if dates:
-                dates.sort(lambda x,y: cmp(x[0], y[0]))
+                        dates.append(year)
 
         return {
             'categories': tuple(categories),
@@ -200,26 +159,37 @@ class UshahidiMapView(BrowserView):
             query &= Eq('portal_type', self.request['m'])
 
         # apply 'from' date
-        start = self.request.get('s')
-        if start and start != '0' and start != 'null':
-            query &= Ge('end', int(start))
-
-        # apply 'to' date
-        end = self.request.get('e')
-        if end and end != '0' and end != 'null':
-            query &= Le('start', int(end))
+        start, end = self.get_period()
+        if start and end:
+            query &= Between('yearHist', int(start), int(end), filter=False)
 
         return query
+
+    def get_period(self):
+        try:
+            start = int(self.request['s'])
+        except:
+            start = START_YEAR
+        try:
+            end = int(self.request['e'])
+        except:
+            if start < END_YEAR:
+                end = END_YEAR
+            else:
+                end = start
+
+        return start, end
 
     def _get_category_color(self):
         category = self.request.get('c') and [self.request.get('c')] or []
         color = DEFAULT_MARKER_COLOR
         if category:
             color = self.getCategoryColor(category[0],
-                default=DEFAULT_MARKER_COLOR)
+                                          default=DEFAULT_MARKER_COLOR)
         return color
 
     def getJSONCluster(self):
+
         context = aq_inner(self.context)
         catalog = getToolByName(context, 'portal_catalog')
         purl = getToolByName(context, 'portal_url')()
@@ -233,8 +203,7 @@ class UshahidiMapView(BrowserView):
         # query all markers for the map
         markers = []
         added = []
-        for brain in catalog.evalAdvancedQuery(query, (
-            ('start', 'asc'), ('end', 'desc'))):
+        for brain in catalog.evalAdvancedQuery(query, (('yearHist', 'asc'), )):
             for m in self._get_markers(brain):
                 if m['uid'] not in added:
                     markers.append(m)
@@ -294,9 +263,9 @@ class UshahidiMapView(BrowserView):
                     'class': 'stdClass'
                 },
                 'geometry': {
-                     'type': 'Point',
-                     'coordinates': [bounds['center']['longitude'],
-                         bounds['center']['latitude']]
+                    'type': 'Point',
+                    'coordinates': [bounds['center']['longitude'],
+                                    bounds['center']['latitude']]
                 }
             })
 
@@ -323,7 +292,7 @@ class UshahidiMapView(BrowserView):
                 'geometry': marker['geometry'],
             })
 
-        return json.dumps({"type":"FeatureCollection", "features": features})
+        return json.dumps({"type": "FeatureCollection", "features": features})
 
     def calculate_center(self, cluster):
         """Calculates average lat and lon of clustered items"""
@@ -361,20 +330,20 @@ class UshahidiMapView(BrowserView):
     def getJSON(self):
         return json.dumps({})
 
-    @ram.cache(lambda *args: time() // (60 * CACHE_MIN))
+    #@ram.cache(lambda *args: time() // (60 * CACHE_MIN))
     def getTimelineMarkers(self):
         markers = []
         query = self._prepare_query()
         catalog = getToolByName(self.context, 'portal_catalog')
-        for brain in catalog.evalAdvancedQuery(query, (
-            ('start', 'asc'), ('end', 'desc'))):
+        for brain in catalog.evalAdvancedQuery(query, (('yearHist', 'asc'),)):
+
             # skip if no coordinates set
             has_markers = self._get_markers(brain)
             if not has_markers:
                 continue
 
             # skip if there is no valid start date set
-            if not brain.start or brain.start.year() <= 1000:
+            if not brain.yearHist:
                 continue
 
             markers.append(brain)
@@ -383,219 +352,27 @@ class UshahidiMapView(BrowserView):
     def getTimeline(self):
         data = []
         markers = self.getTimelineMarkers()
+
         # prepare data from request
-        interval = self.request.get('i', '') or 'month'
+        start, end = self.get_period()
 
-        try:
-            st_delta = int(self.request['s'])
-            if st_delta < 0:
-                start = DateTime(datetime(1970, 01, 01) - timedelta(seconds=abs(st_delta)))
-            else:
-                start = DateTime(st_delta)
-        except:
-            start = DateTime('1840/01/01 00:00:00 UTC')
+        years = {}
+        for year in range(start, end+1):
+            years.setdefault(year, 0)
+            for marker in markers:
+                if marker.yearHist == year:
+                    years[year] += 1
 
-        try:
-            end_delta = int(self.request['e'])
-            if end_delta < 0:
-                end = DateTime(datetime(1970, 01, 01) - timedelta(seconds=abs(end_delta)))
-            else:
-                end = DateTime(end_delta)
-        except:
-            end = DateTime('1960/12/31 00:00:00 UTC')
-
-        # 'year' interval
-        if interval == 'year':
-            years = {}
-            for year in self._getYearsRange(start, end):
-                _from = DateTime(year, 1, 1).earliestTime()
-                _to = DateTime(year, 12, 31).latestTime()
-                _date = calendar.timegm(datetime(year, 1, 1).timetuple()
-                    ) * 1000
-                years.setdefault(_date, 0)
-                for marker in markers:
-                    if self._isObjWithinPeriod(marker, _from, _to):
-                        years[_date] += 1
-
-            # sort and filter out 'zero' months
-            keys = years.keys()
-            keys.sort()
-            data = [[key, years[key]] for key in keys]
-
-        # 'month' interval
-        if interval == 'month':
-            months = {}
-            for year, month, last_day in self._getMonthsRange(start, end):
-                _from = DateTime(year, month, 1).earliestTime()
-                _to = DateTime(year, month, last_day).latestTime()
-                _date = calendar.timegm(datetime(year, month, 1).timetuple()
-                    ) * 1000
-                months.setdefault(_date, 0)
-                for marker in markers:
-                    if self._isObjWithinPeriod(marker, _from, _to):
-                        months[_date] += 1
-
-            # sort and filter out 'zero' months
-            keys = months.keys()
-            keys.sort()
-            data = [[key, months[key]] for key in keys if months[key]]
-
-        # 'week' interval
-        if interval == 'week':
-            weeks = {}
-            for year, month, first_day, last_day in self._getWeeksRange(start,
-                end):
-                _from = DateTime(year, month, first_day).earliestTime()
-                _to = DateTime(year, month, last_day).latestTime()
-                _date = calendar.timegm(datetime(year, month,
-                    first_day).timetuple()) * 1000
-                weeks.setdefault(_date, 0)
-                for marker in markers:
-                    if self._isObjWithinPeriod(marker, _from, _to):
-                        weeks[_date] += 1
-
-            # sort and filter out 'zero' weeks
-            keys = weeks.keys()
-            keys.sort()
-            data = [[key, weeks[key]] for key in keys if weeks[key]]
-
-        # 'day' interval
-        if interval == 'day':
-            days = {}
-            for year, month, day in self._getDaysRange(start, end):
-                _from = DateTime(year, month, day).earliestTime()
-                _to = DateTime(year, month, day).latestTime()
-                _date = calendar.timegm(datetime(year, month, day).timetuple()
-                    ) * 1000
-                days.setdefault(_date, 0)
-                for marker in markers:
-                    if self._isObjWithinPeriod(marker, _from, _to):
-                        days[_date] += 1
-
-            # sort and filter out 'zero' days
-            keys = days.keys()
-            keys.sort()
-            data = [[key, days[key]] for key in keys if days[key]]
+        # sort and filter out 'zero' months
+        keys = years.keys()
+        keys.sort()
+        data = [[key, years[key]] for key in keys]
 
         return json.dumps([{
             "label": self.request.get('c', '') or "All Categories",
             "color": self._get_category_color(),
             "data": data
         }])
-
-    def _isObjWithinPeriod(self, brain, _from, _to):
-        """Checks whether given object is lasting during passed month"""
-        # no start set
-        if not brain.start or brain.start.year() <= 1000:
-            return False
-
-        # is object after the end date?
-        start = brain.start
-        if start.greaterThan(_to):
-            return False
-
-        # if end date is set
-        end = None
-        if brain.end and brain.end.year() < 2499:
-            end = brain.end
-            # is object before the start date
-            if end.lessThan(_from):
-                return False
-
-        return True
-
-    def _getDaysRange(self, start, end):
-        """Returns list of (year, month, day) tuples for passed
-        start and end DateTimes.
-        """
-        my_cal = calendar.Calendar()
-        first_year, last_year = start.year(), end.year()
-        first_month, last_month = start.month(), end.month()
-
-        days = []
-        for year in range(first_year, last_year+1):
-            # count from first month only for first year
-            month_from = 1
-            if year == first_year:
-                month_from = first_month
-
-            # count till last month only for last year
-            month_to = 12
-            if year == last_year:
-                month_to = last_month
-
-            for month in range(month_from, month_to+1):
-                # loop over days in a month of the year
-                days.extend([(year, month, day)
-                    for day in my_cal.itermonthdays(year, month) if day])
-
-        return days
-
-    def _getWeeksRange(self, start, end):
-        """Returns list of (year, month, first_day, last_day) tuples for passed
-        start and end DateTimes.
-        """
-        my_cal = calendar.Calendar()
-        first_year, last_year = start.year(), end.year()
-        first_month, last_month = start.month(), end.month()
-
-        weeks = []
-        for year in range(first_year, last_year+1):
-            # count from first month only for first year
-            month_from = 1
-            if year == first_year:
-                month_from = first_month
-
-            # count till last month only for last year
-            month_to = 12
-            if year == last_year:
-                month_to = last_month
-
-            for month in range(month_from, month_to+1):
-                # loop over weeks in a month of the year
-                for week in my_cal.monthdayscalendar(year, month):
-                    # filter out zero days
-                    temp = [d for d in week if d]
-                    weeks.append((year, month, temp[0], temp[-1]))
-
-        return weeks
-
-    def _getMonthsRange(self, start, end):
-        """Returns list of (year, month, last_day) tuples for passed
-        start and end DateTimes.
-        """
-        first_year, last_year = start.year(), end.year()
-        first_month, last_month = start.month(), end.month()
-
-        months = []
-        for year in range(first_year, last_year+1):
-            # count from first month only for first year
-            month_from = 1
-            if year == first_year:
-                month_from = first_month
-
-            # count till last month only for last year
-            month_to = 12
-            if year == last_year:
-                month_to = last_month
-
-            for month in range(month_from, month_to+1):
-                months.append((year, month,
-                    calendar.monthrange(year, month)[1]))
-
-        return months
-
-    def _getYearsRange(self, start, end):
-        """Returns list of (year) tuples for passed
-        start and end DateTimes.
-        """
-        first_year, last_year = start.year(), end.year()
-
-        years = []
-        for year in range(first_year, last_year+1):
-            years.append(year)
-
-        return years
 
     def getJSONLayer(self):
         return json.dumps({})
@@ -618,4 +395,3 @@ class UshahidiMapView(BrowserView):
                 'longitude': brain.zgeo_geometry['coordinates'][0],
             })
         return markers
-
